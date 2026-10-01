@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Σωστού Λάθους</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1a1a2e;--ink2:#3d3d5c;--ink3:#7a7a9a;
+  --paper:#faf8f3;--paper2:#f0ede4;--paper3:#e8e3d7;
+  --accent:#2d6a4f;--accent2:#40916c;--accent-light:#d8f3dc;
+  --red:#c1121f;--red-light:#ffe8ea;
+  --gold:#b5830a;--gold-light:#fff3cd;
+  --border:#d4cfc3;
+  --font-body:'IBM Plex Sans',sans-serif;
+  --font-display:'Libre Baskerville',serif;
+  --radius:6px;--radius-lg:10px;
+}
+body{font-family:var(--font-body);background:var(--paper);color:var(--ink);min-height:100vh;line-height:1.6}
+.hidden{display:none!important}
+.screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+
+/* LOADING */
+#screen-loading{background:var(--ink)}
+.loading-symbol{font-family:var(--font-display);font-size:3rem;color:#fff;display:block;margin-bottom:1rem;animation:pulse 1.5s ease-in-out infinite;text-align:center}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.loading-text{font-size:0.85rem;color:rgba(255,255,255,0.4);letter-spacing:0.1em;text-align:center}
+.loading-error{color:#ff7b7b;font-size:0.85rem;margin-top:1rem;max-width:300px;text-align:center}
+
+/* LOGIN */
+#screen-login{background:var(--ink);position:relative;overflow:hidden}
+#screen-login::before{content:'';position:absolute;top:-120px;left:-80px;width:400px;height:400px;background:radial-gradient(circle,rgba(45,106,79,0.3) 0%,transparent 70%);pointer-events:none}
+.login-box{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:var(--radius-lg);padding:2.5rem 2rem;width:100%;max-width:380px;position:relative;z-index:1}
+.login-logo{text-align:center;margin-bottom:2rem}
+.login-logo .greek-letter{font-family:var(--font-display);font-size:3rem;color:#fff;display:block;line-height:1}
+.login-logo .subtitle{font-size:0.75rem;color:rgba(255,255,255,0.4);letter-spacing:0.15em;text-transform:uppercase;margin-top:0.4rem}
+.login-title{font-family:var(--font-display);font-size:1.1rem;color:rgba(255,255,255,0.85);text-align:center;margin-bottom:1.8rem}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:0.72rem;color:rgba(255,255,255,0.5);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px}
+.field input{width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);padding:10px 14px;color:#fff;font-size:0.95rem;font-family:var(--font-body);outline:none;transition:border 0.2s}
+.field input:focus{border-color:var(--accent2)}
+.field input::placeholder{color:rgba(255,255,255,0.25)}
+.btn-primary{width:100%;margin-top:0.4rem;background:var(--accent);border:none;border-radius:var(--radius);padding:11px;color:#fff;font-family:var(--font-body);font-size:0.95rem;font-weight:500;cursor:pointer;transition:background 0.2s}
+.btn-primary:hover{background:var(--accent2)}
+.login-error{color:#ff7b7b;font-size:0.8rem;text-align:center;margin-top:0.8rem;min-height:1.2em}
+.admin-link{text-align:center;margin-top:1.2rem}
+.admin-link a{font-size:0.75rem;color:rgba(255,255,255,0.25);text-decoration:none}
+.admin-link a:hover{color:rgba(255,255,255,0.5)}
+
+/* TOPBAR */
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:0.85rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;flex-wrap:wrap;gap:0.5rem}
+.topbar-title{font-family:var(--font-display);font-size:0.95rem;color:var(--ink)}
+.topbar-actions{display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap}
+.btn-sm{padding:6px 14px;border-radius:var(--radius);font-size:0.8rem;font-family:var(--font-body);cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--ink2);transition:all 0.15s;text-decoration:none;display:inline-block}
+.btn-sm:hover{background:var(--paper2)}
+.btn-sm.danger{border-color:#fca5a5;color:var(--red)}
+.btn-sm.danger:hover{background:var(--red-light)}
+
+/* PAGE BODY */
+.page-body{padding:1.5rem;max-width:900px;margin:0 auto;width:100%}
+
+/* TABS */
+.tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:1.5rem;overflow-x:auto}
+.tab{padding:8px 18px;font-size:0.85rem;color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;font-family:var(--font-body);transition:all 0.15s}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:500}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* CARDS */
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem}
+.section-title{font-family:var(--font-display);font-size:1rem;color:var(--ink)}
+.btn-add{background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:8px 16px;font-size:0.8rem;font-family:var(--font-body);cursor:pointer}
+.btn-add:hover{background:var(--accent2)}
+.item-list{display:flex;flex-direction:column;gap:0.6rem}
+.item-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.1rem;display:flex;align-items:flex-start;gap:0.8rem;transition:box-shadow 0.15s}
+.item-card:hover{box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.item-num{font-family:var(--font-display);font-size:0.8rem;color:var(--ink3);min-width:22px;padding-top:2px}
+.item-content{flex:1;min-width:0}
+.item-title{font-size:0.9rem;color:var(--ink);margin-bottom:0.3rem;word-break:break-word}
+.item-meta{display:flex;gap:0.8rem;flex-wrap:wrap;font-size:0.75rem;color:var(--ink3);align-items:center}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:0.72rem;font-weight:500}
+.badge-green{background:var(--accent-light);color:var(--accent)}
+.badge-red{background:var(--red-light);color:var(--red)}
+.item-actions{display:flex;gap:0.4rem;flex-shrink:0}
+.btn-icon{background:none;border:1px solid var(--border);border-radius:var(--radius);width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:0.75rem;transition:all 0.15s}
+.btn-icon.edit:hover{background:var(--gold-light);border-color:#fde68a;color:var(--gold)}
+.btn-icon.del:hover{background:var(--red-light);border-color:#fca5a5;color:var(--red)}
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--ink3)}
+.empty-state .big{font-size:2.5rem;margin-bottom:0.5rem}
+.empty-state p{font-size:0.85rem}
+.sync-bar{border-radius:var(--radius);padding:8px 14px;font-size:0.8rem;margin-bottom:1rem}
+.sync-bar.ok{background:var(--accent-light);border:1px solid #86efac;color:var(--accent)}
+.sync-bar.err{background:var(--red-light);border:1px solid #fca5a5;color:var(--red)}
+.sync-bar.saving{background:var(--gold-light);border:1px solid #fde68a;color:var(--gold)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:999;padding:1rem}
+.modal{background:#fff;border-radius:var(--radius-lg);padding:1.8rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
+.modal h2{font-family:var(--font-display);font-size:1.1rem;color:var(--ink);margin-bottom:1.4rem}
+.form-group{margin-bottom:1rem}
+.form-group label{display:block;font-size:0.75rem;color:var(--ink3);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px}
+.form-group input,.form-group textarea,.form-group select{width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;font-size:0.9rem;font-family:var(--font-body);color:var(--ink);outline:none;background:#fff;transition:border 0.2s}
+.form-group input:focus,.form-group textarea:focus{border-color:var(--accent2)}
+.form-group textarea{resize:vertical;min-height:80px}
+.form-row{display:flex;gap:1rem}
+.form-row .form-group{flex:1}
+.radio-group{display:flex;gap:1rem}
+.radio-group label{display:flex;align-items:center;gap:6px;font-size:0.9rem;color:var(--ink);text-transform:none;letter-spacing:0;cursor:pointer}
+.radio-group input[type=radio]{width:auto}
+.modal-actions{display:flex;gap:0.6rem;justify-content:flex-end;margin-top:1.4rem}
+.btn-cancel{padding:8px 18px;border-radius:var(--radius);font-size:0.85rem;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--ink2);font-family:var(--font-body)}
+.btn-save{padding:8px 18px;border-radius:var(--radius);font-size:0.85rem;cursor:pointer;border:none;background:var(--accent);color:#fff;font-family:var(--font-body)}
+
+/* SUBJECT SELECTOR */
+#screen-subject-select{background:var(--paper)}
+.subject-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;width:100%;max-width:700px}
+.subject-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.2rem 1rem;cursor:pointer;transition:all 0.15s;text-align:center}
+.subject-card:hover{border-color:var(--accent2);box-shadow:0 4px 12px rgba(45,106,79,0.12);transform:translateY(-2px)}
+.subject-card .s-icon{font-size:1.8rem;margin-bottom:0.5rem}
+.subject-card .s-name{font-family:var(--font-display);font-size:0.88rem;color:var(--ink);line-height:1.3}
+.subject-card .s-type{font-size:0.7rem;color:var(--ink3);margin-top:0.3rem;text-transform:uppercase;letter-spacing:0.08em}
+.subject-card.quiz-type{border-top:3px solid var(--accent)}
+.subject-card.theory-type{border-top:3px solid var(--gold)}
+.select-header{text-align:center;margin-bottom:2rem}
+.select-header h1{font-family:var(--font-display);font-size:1.5rem;color:var(--ink);margin-bottom:0.3rem}
+.select-header p{font-size:0.85rem;color:var(--ink3)}
+
+/* HOME */
+#screen-home{background:var(--paper);justify-content:flex-start;padding:0}
+.home-header{background:var(--ink);padding:2rem 1.5rem;text-align:center}
+.home-greeting{font-size:0.85rem;color:rgba(255,255,255,0.5);margin-bottom:0.3rem}
+.home-subject{font-family:var(--font-display);font-size:1.4rem;color:#fff;margin-bottom:0.2rem}
+.home-type-badge{font-size:0.72rem;color:rgba(255,255,255,0.4);letter-spacing:0.1em;text-transform:uppercase}
+.home-body{padding:1.5rem;max-width:560px;margin:0 auto;width:100%}
+.stats-row{display:flex;gap:1rem;margin-bottom:1.5rem}
+.stat-box{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:0.8rem 1rem;flex:1;text-align:center}
+.stat-box .val{font-family:var(--font-display);font-size:1.5rem;color:var(--ink);display:block}
+.stat-box .lbl{font-size:0.7rem;color:var(--ink3);text-transform:uppercase;letter-spacing:0.06em}
+.btn-start{width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:14px;font-family:var(--font-display);font-size:1rem;cursor:pointer;margin-bottom:0.8rem}
+.btn-start:hover{background:var(--accent2)}
+.btn-back-subjects{width:100%;background:#fff;color:var(--ink2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;font-family:var(--font-body);font-size:0.85rem;cursor:pointer;margin-bottom:1rem}
+
+/* THEORY */
+.theory-grid{display:flex;flex-direction:column;gap:0.8rem}
+.theory-chapter{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.theory-chapter-header{padding:0.9rem 1rem;font-weight:500;font-size:0.9rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}
+.theory-chapter-header:hover{background:var(--paper2)}
+.theory-images{padding:0.8rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.6rem}
+.theory-img{width:100%;border-radius:var(--radius);cursor:pointer;transition:transform 0.15s;border:1px solid var(--border)}
+.theory-img:hover{transform:scale(1.02)}
+.theory-caption{font-size:0.72rem;color:var(--ink3);text-align:center;margin-top:3px}
+
+/* QUIZ */
+#screen-quiz{background:var(--paper);justify-content:flex-start;padding:0}
+.quiz-topbar{background:#fff;border-bottom:1px solid var(--border);padding:0.8rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40}
+.quiz-prog-bar{width:120px;height:4px;background:var(--paper3);border-radius:2px;overflow:hidden}
+.quiz-prog-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 0.4s ease}
+.quiz-body{padding:1.5rem;max-width:680px;margin:0 auto;width:100%}
+.dot-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:1.5rem}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--paper3);border:1px solid var(--border);transition:all 0.2s}
+.dot.answered{background:var(--accent);border-color:var(--accent)}
+.dot.current{border-color:var(--ink);background:var(--paper2)}
+.q-counter{font-size:0.8rem;color:var(--ink3);margin-bottom:0.5rem;display:block}
+.q-statement{font-family:var(--font-display);font-size:1rem;color:var(--ink);line-height:1.6;margin-bottom:1.2rem}
+.answer-btns{display:flex;flex-direction:column;gap:0.6rem;margin-bottom:1.5rem}
+.ans-btn{width:100%;padding:13px 16px;background:#fff;border:1.5px solid var(--border);border-radius:var(--radius-lg);font-family:var(--font-body);font-size:0.92rem;color:var(--ink);cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;transition:all 0.15s}
+.ans-btn:hover{border-color:var(--accent2);background:var(--accent-light)}
+.ans-btn .bl{width:26px;height:26px;border-radius:50%;background:var(--paper2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:600;flex-shrink:0;transition:all 0.15s}
+.ans-btn.selected{border-color:var(--accent);background:var(--accent-light)}
+.ans-btn.selected .bl{background:var(--accent);border-color:var(--accent);color:#fff}
+.quiz-nav{display:flex;gap:0.8rem;justify-content:flex-end}
+.btn-nav{padding:10px 20px;border-radius:var(--radius);font-family:var(--font-body);font-size:0.88rem;cursor:pointer;border:1px solid var(--border);transition:all 0.15s}
+.btn-prev{background:#fff;color:var(--ink2)}
+.btn-next{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-next:disabled{background:var(--paper3);color:var(--ink3);border-color:var(--border);cursor:not-allowed}
+
+/* RESULTS */
+#screen-results{background:var(--paper);justify-content:flex-start;padding:0}
+.results-header{background:var(--ink);padding:2rem;text-align:center}
+.results-title{font-family:var(--font-display);font-size:1.3rem;color:#fff;margin-bottom:0.2rem}
+.results-sub{font-size:0.8rem;color:rgba(255,255,255,0.4);margin-bottom:0.2rem}
+.score-circle{display:inline-flex;align-items:center;justify-content:center;width:90px;height:90px;border-radius:50%;border:3px solid var(--accent2);margin:1.2rem 0 0.4rem}
+.score-num{font-family:var(--font-display);font-size:1.8rem;color:#fff}
+.score-tot{font-size:0.85rem;color:rgba(255,255,255,0.5);margin-left:2px}
+.results-body{padding:1.5rem;max-width:720px;margin:0 auto;width:100%}
+.results-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.8rem;margin-bottom:1.5rem}
+.res-stat{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:0.9rem;text-align:center}
+.res-stat .val{font-family:var(--font-display);font-size:1.6rem;display:block;margin-bottom:2px}
+.res-stat .lbl{font-size:0.7rem;color:var(--ink3);text-transform:uppercase;letter-spacing:0.06em}
+.res-stat.correct .val{color:var(--accent)}
+.res-stat.wrong .val{color:var(--red)}
+.res-stat.pct .val{color:var(--gold)}
+.review-list{display:flex;flex-direction:column;gap:0.5rem}
+.review-item{background:#fff;border:1px solid var(--border);border-left-width:4px;border-radius:0 var(--radius-lg) var(--radius-lg) 0;padding:0.9rem 1rem;display:grid;grid-template-columns:auto 1fr auto;gap:0.7rem;align-items:start}
+.review-item.correct{border-left-color:var(--accent)}
+.review-item.wrong{border-left-color:var(--red)}
+.review-num{font-size:0.78rem;color:var(--ink3);min-width:18px;font-family:var(--font-display)}
+.review-text{font-size:0.85rem;color:var(--ink);line-height:1.5}
+.your-answer{font-size:0.75rem;margin-top:3px}
+.your-answer.correct{color:var(--accent)}
+.your-answer.wrong{color:var(--red)}
+.review-meta{text-align:right;white-space:nowrap}
+.review-result{font-size:0.78rem;font-weight:600;display:block}
+.review-item.correct .review-result{color:var(--accent)}
+.review-item.wrong .review-result{color:var(--red)}
+.review-page{font-size:0.7rem;color:var(--ink3);margin-top:2px}
+.results-actions{display:flex;gap:0.8rem;justify-content:center;margin-top:1.5rem;padding-bottom:2rem;flex-wrap:wrap}
+.btn-home{background:#fff;color:var(--ink2);border:1px solid var(--border);border-radius:var(--radius);padding:11px 24px;font-family:var(--font-body);font-size:0.9rem;cursor:pointer}
+.btn-retry{background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:11px 24px;font-family:var(--font-body);font-size:0.9rem;cursor:pointer}
+
+/* DETAIL */
+#screen-detail{background:var(--paper);justify-content:flex-start;padding:0}
+.detail-topbar{background:#fff;border-bottom:1px solid var(--border);padding:0.85rem 1.5rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:50}
+.score-pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:0.75rem;font-weight:600}
+.score-pill.high{background:var(--accent-light);color:var(--accent)}
+.score-pill.mid{background:var(--gold-light);color:var(--gold)}
+.score-pill.low{background:var(--red-light);color:var(--red)}
+
+/* RESULTS FILTERS */
+.results-filters{display:flex;gap:0.8rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
+.results-filters input{border:1px solid var(--border);border-radius:var(--radius);padding:6px 12px;font-size:0.82rem;font-family:var(--font-body);color:var(--ink);outline:none;background:#fff}
+.clear-btn{padding:6px 14px;border-radius:var(--radius);font-size:0.78rem;border:1px solid #fca5a5;color:var(--red);background:#fff;cursor:pointer;font-family:var(--font-body);margin-left:auto}
+.clear-btn:hover{background:var(--red-light)}
+
+/* SETTINGS */
+.settings-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.4rem;margin-bottom:1.2rem}
+.settings-card h3{font-family:var(--font-display);font-size:0.95rem;color:var(--ink);margin-bottom:1rem}
+.settings-row{display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap}
+.settings-row .form-group{flex:1;min-width:140px;margin-bottom:0}
+.settings-hint{font-size:0.75rem;color:var(--accent);margin-top:0.5rem;min-height:1.2em}
+
+/* IMAGE OVERLAY */
+.img-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:1rem}
+.img-overlay img{max-width:95vw;max-height:85vh;object-fit:contain;border-radius:var(--radius)}
+.img-overlay-caption{font-size:0.82rem;color:rgba(255,255,255,0.6);margin-top:0.8rem}
+
+/* KaTeX */
+.katex-display{font-size:0.82rem!important;margin:0.3rem 0!important;overflow-x:auto}
+.katex{font-size:0.9em!important}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="screen-loading" class="screen">
+  <div>
+    <span class="loading-symbol">∑</span>
+    <p class="loading-text" id="loading-text">ΦΟΡΤΩΣΗ...</p>
+    <p class="loading-error hidden" id="loading-error"></p>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="screen-login" class="screen hidden">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="greek-letter">∑</span>
+      <span class="subtitle">Πλατφόρμα Εξάσκησης</span>
+    </div>
+    <p class="login-title">Μαθηματικά</p>
+    <div class="field">
+      <label>Ονοματεπώνυμο</label>
+      <input type="text" id="login-name" placeholder="π.χ. Γιώργος Παπαδόπουλος" autocomplete="name">
+    </div>
+    <div class="field">
+      <label>Κωδικός Μαθήματος</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="off">
+    </div>
+    <button class="btn-primary" onclick="doLogin()">Είσοδος →</button>
+    <p class="login-error" id="login-error"></p>
+    <div class="admin-link"><a href="#" onclick="showAdminLogin()">Διαχειριστής</a></div>
+  </div>
+</div>
+
+<!-- ADMIN LOGIN MODAL -->
+<div id="modal-admin-login" class="modal-overlay hidden">
+  <div class="modal" style="max-width:360px">
+    <h2>Είσοδος Διαχειριστή</h2>
+    <div class="form-group"><label>Username</label><input type="text" id="admin-username" autocomplete="off"></div>
+    <div class="form-group"><label>Κωδικός</label><input type="password" id="admin-password" autocomplete="off"></div>
+    <p class="login-error" id="admin-login-error"></p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-admin-login')">Ακύρωση</button>
+      <button class="btn-save" onclick="doAdminLogin()">Είσοδος</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUBJECT SELECT -->
+<div id="screen-subject-select" class="screen hidden">
+  <div class="select-header">
+    <h1>Καλώς ήρθες, <span id="select-name"></span>!</h1>
+    <p>Επίλεξε μάθημα</p>
+  </div>
+  <div class="subject-grid" id="subject-grid"></div>
+  <div style="margin-top:1.5rem">
+    <a href="#" style="font-size:0.75rem;color:var(--ink3);text-decoration:none" onclick="doLogout()">Αποσύνδεση</a>
+  </div>
+</div>
+
+<!-- HOME -->
+<div id="screen-home" class="screen hidden">
+  <div class="home-header">
+    <p class="home-greeting" id="home-greeting"></p>
+    <h1 class="home-subject" id="home-subject-name"></h1>
+    <p class="home-type-badge" id="home-type-badge"></p>
+  </div>
+  <div class="home-body">
+    <div id="home-quiz-content">
+      <div class="stats-row">
+        <div class="stat-box"><span class="val" id="home-total">0</span><span class="lbl">Ερωτήσεις</span></div>
+        <div class="stat-box"><span class="val" id="home-group">-</span><span class="lbl">Επόμενη ομάδα</span></div>
+        <div class="stat-box"><span class="val" id="home-sessions">0</span><span class="lbl">Δοκιμές</span></div>
+      </div>
+      <button class="btn-start" onclick="startQuiz()">Έναρξη Quiz →</button>
+      <button class="btn-back-subjects" onclick="showMyHistory()" style="background:#fff;color:var(--accent);border:1px solid var(--accent)">📊 Οι προσπάθειές μου</button>
+    </div>
+    <div id="home-theory-content" class="hidden">
+      <div id="theory-container" class="theory-grid"></div>
+    </div>
+    <div style="text-align:center">
+      <a href="#" style="font-size:0.75rem;color:var(--ink3);text-decoration:none" onclick="doLogout()">Αποσύνδεση</a>
+    </div>
+  </div>
+</div>
+
+<!-- QUIZ -->
+<div id="screen-quiz" class="screen hidden">
+  <div class="quiz-topbar">
+    <span style="font-size:0.8rem;color:var(--ink3)">Ερώτηση <span id="qprog-cur">1</span>/<span id="qprog-tot">20</span></span>
+    <div class="quiz-prog-bar"><div class="quiz-prog-fill" id="quiz-prog-fill" style="width:5%"></div></div>
+    <button class="btn-sm" onclick="confirmExit()">✕</button>
+  </div>
+  <div class="quiz-body">
+    <div class="dot-row" id="dot-row"></div>
+    <span class="q-counter" id="quiz-q-num"></span>
+    <div id="quiz-timer-bar" class="hidden" style="margin-bottom:0.8rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:0.75rem;color:var(--ink3)">Χρόνος</span>
+        <span id="quiz-timer-display" style="font-size:0.85rem;font-weight:600;color:var(--red)"></span>
+      </div>
+      <div style="height:4px;background:var(--paper3);border-radius:2px;overflow:hidden">
+        <div id="quiz-timer-fill" style="height:100%;background:var(--accent);border-radius:2px;transition:width 1s linear"></div>
+      </div>
+    </div>
+    <div id="quiz-q-img" class="hidden" style="margin-bottom:1rem;text-align:center">
+      <img id="quiz-q-img-src" src="" alt="" style="max-width:100%;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="openImgOverlay(this.src,'')">
+    </div>
+    <p class="q-statement" id="quiz-q-text"></p>
+    <div id="quiz-explanation-box" class="hidden" style="background:var(--gold-light);border:1px solid #fde68a;border-radius:var(--radius-lg);padding:0.9rem 1rem;margin-bottom:1rem;font-size:0.85rem;color:var(--ink)">
+      <strong style="color:var(--gold)">Εξήγηση:</strong> <span id="quiz-explanation-text"></span>
+    </div>
+    <div id="quiz-tf-btns" class="answer-btns">
+      <button class="ans-btn" id="btn-true" onclick="selectAnswer(true)"><span class="bl">Σ</span>Σωστό</button>
+      <button class="ans-btn" id="btn-false" onclick="selectAnswer(false)"><span class="bl">Λ</span>Λάθος</button>
+    </div>
+    <div id="quiz-mc-btns" class="answer-btns hidden"></div>
+    <div class="quiz-nav">
+      <button class="btn-nav btn-prev" id="btn-prev" onclick="prevQ()" style="display:none">← Πίσω</button>
+      <button class="btn-nav btn-next" id="btn-next" onclick="nextQ()">Επόμενο →</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="screen-results" class="screen hidden">
+  <div class="results-header">
+    <p class="results-sub" id="results-name-display"></p>
+    <h1 class="results-title">Ολοκλήρωσες!</h1>
+    <div class="score-circle"><span class="score-num" id="res-correct">0</span><span class="score-tot" id="res-tot">/20</span></div>
+  </div>
+  <div class="results-body">
+    <div class="results-grid">
+      <div class="res-stat correct"><span class="val" id="res-c">0</span><span class="lbl">Σωστές</span></div>
+      <div class="res-stat wrong"><span class="val" id="res-w">0</span><span class="lbl">Λάθος</span></div>
+      <div class="res-stat pct"><span class="val" id="res-pct">0%</span><span class="lbl">Ποσοστό</span></div>
+    </div>
+    <p style="font-size:0.72rem;color:var(--ink3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.8rem">Αναλυτικά</p>
+    <div class="review-list" id="review-list"></div>
+    <div id="results-actions-div" class="results-actions"></div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="screen-admin" class="screen hidden" style="justify-content:flex-start;padding:0;background:var(--paper)">
+  <div class="topbar">
+    <span class="topbar-title">∑ Διαχείριση</span>
+    <div class="topbar-actions">
+      <span id="admin-sync" style="font-size:0.75rem;color:var(--ink3)"></span>
+      <button class="btn-sm" onclick="exportQuestions()">↓ JSON</button>
+      <label class="btn-sm" style="cursor:pointer">↑ JSON<input type="file" accept=".json" style="display:none" onchange="importQuestions(event)"></label>
+      <button class="btn-sm danger" onclick="doLogout()">Έξοδος</button>
+    </div>
+  </div>
+  <div class="page-body">
+    <div id="admin-sync-bar" class="sync-bar hidden"></div>
+    <!-- Subject selector for admin -->
+    <div style="margin-bottom:1.2rem">
+      <label style="font-size:0.75rem;color:var(--ink3);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px;display:block">Μάθημα</label>
+      <select id="admin-subject-select" onchange="onAdminSubjectChange()" style="border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;font-size:0.9rem;font-family:var(--font-body);color:var(--ink);background:#fff;outline:none;width:100%;max-width:400px"></select>
+    </div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchAdminTab('tab-a-questions',this)">Ερωτήσεις</div>
+      <div class="tab" onclick="switchAdminTab('tab-a-results',this)">Αποτελέσματα</div>
+      <div class="tab" onclick="switchAdminTab('tab-a-stats',this)">Στατιστικά</div>
+      <div class="tab" onclick="switchAdminTab('tab-a-theory',this)">Θεωρία</div>
+      <div class="tab" onclick="switchAdminTab('tab-a-settings',this)">Ρυθμίσεις</div>
+    </div>
+    <!-- QUESTIONS TAB -->
+    <div id="tab-a-questions" class="tab-panel active">
+      <div class="section-header">
+        <span class="section-title">Ερωτήσεις <span id="a-q-count" style="font-size:0.8rem;font-weight:400;color:var(--ink3)"></span></span>
+        <div style="display:flex;gap:0.6rem">
+          <button class="btn-sm danger" onclick="deleteAllQuestions()">🗑 Όλες</button>
+          <button class="btn-add" onclick="openAddModal()">+ Νέα</button>
+        </div>
+      </div>
+      <!-- Μαζική ανάθεση ομάδας -->
+      <div id="bulk-bar" style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;padding:0.8rem 1rem;background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg)">
+        <input type="checkbox" id="select-all-cb" onchange="toggleSelectAll(this)">
+        <label for="select-all-cb" style="font-size:0.82rem;color:var(--ink2)">Επιλογή όλων</label>
+        <input type="text" id="bulk-group-input" placeholder="Όνομα ομάδας" style="border:1px solid var(--border);border-radius:var(--radius);padding:5px 10px;font-size:0.82rem;font-family:var(--font-body);width:150px">
+        <button class="btn-sm success" onclick="bulkAssignGroup()">✓ Εφαρμογή</button>
+        <span id="bulk-msg" style="font-size:0.78rem;color:var(--accent)"></span>
+      </div>
+      <div id="a-q-list" class="item-list"></div>
+    </div>
+    <!-- RESULTS TAB -->
+    <div id="tab-a-results" class="tab-panel">
+      <div class="results-filters">
+        <input type="text" id="a-filter-name" placeholder="Αναζήτηση μαθητή..." oninput="renderAdminResults()" style="width:200px">
+        <button class="clear-btn" onclick="clearAllResults()">🗑 Διαγραφή όλων</button>
+      </div>
+      <div id="a-results-cards"></div>
+    </div>
+    <!-- STATS TAB -->
+    <div id="tab-a-stats" class="tab-panel">
+      <div class="section-header"><span class="section-title">Στατιστικά ανά Ερώτηση</span></div>
+      <div id="a-stats-list"></div>
+    </div>
+    <!-- THEORY TAB -->
+    <div id="tab-a-theory" class="tab-panel">
+      <div class="section-header">
+        <span class="section-title">Εικόνες Θεωρίας</span>
+        <button class="btn-add" onclick="openAddImageModal()">+ Προσθήκη εικόνας</button>
+      </div>
+      <div id="a-theory-list" class="item-list"></div>
+    </div>
+    <!-- SETTINGS TAB -->
+    <div id="tab-a-settings" class="tab-panel">
+      <div class="settings-card">
+        <h3>Ενεργή Ομάδα Ερωτήσεων</h3>
+        <p style="font-size:0.82rem;color:var(--ink3);margin-bottom:0.8rem">Επίλεξε ποια ομάδα βλέπουν οι μαθητές. «Όλες» = εμφανίζονται όλες.</p>
+        <div class="settings-row">
+          <div class="form-group">
+            <label>Ομάδα</label>
+            <select id="a-active-group-select" style="border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;font-size:0.9rem;font-family:var(--font-body);color:var(--ink);background:#fff;outline:none;width:100%">
+              <option value="">— Όλες —</option>
+            </select>
+          </div>
+          <button class="btn-add" onclick="saveActiveGroup()">Αποθήκευση</button>
+        </div>
+        <p class="settings-hint" id="a-group-msg"></p>
+      </div>
+      <div class="settings-card">
+        <h3>Κωδικός Μαθητών</h3>
+        <div class="settings-row">
+          <div class="form-group"><label>Νέος Κωδικός</label><input type="text" id="a-student-pass"></div>
+          <button class="btn-add" onclick="saveStudentPass()">Αποθήκευση</button>
+        </div>
+        <p class="settings-hint" id="a-settings-msg"></p>
+      </div>
+      <div class="settings-card">
+        <h3>Κωδικός Admin</h3>
+        <div class="settings-row">
+          <div class="form-group"><label>Νέος Κωδικός</label><input type="password" id="a-admin-pass"></div>
+          <button class="btn-add" onclick="saveAdminPass()">Αποθήκευση</button>
+        </div>
+        <p class="settings-hint" id="a-admin-msg"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY SCREEN -->
+<div id="screen-history" class="screen hidden" style="justify-content:flex-start;padding:0;background:var(--paper)">
+  <div class="detail-topbar">
+    <button class="btn-sm" onclick="showHome()">← Πίσω</button>
+    <div>
+      <span id="history-title" style="font-family:var(--font-display);font-size:0.95rem;color:var(--ink)"></span>
+    </div>
+  </div>
+  <div style="padding:1.5rem;max-width:720px;margin:0 auto;width:100%">
+    <div id="history-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.8rem;margin-bottom:1.5rem"></div>
+    <p style="font-size:0.72rem;color:var(--ink3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.8rem">Αναλυτικά ανά ομάδα</p>
+    <div id="history-body"></div>
+  </div>
+</div>
+
+<!-- DETAIL SCREEN -->
+<div id="screen-detail" class="screen hidden" style="justify-content:flex-start;padding:0;background:var(--paper)">
+  <div class="detail-topbar">
+    <button class="btn-sm" onclick="show('screen-admin');renderAdminResults()">← Πίσω</button>
+    <div style="min-width:0">
+      <span id="detail-name" style="font-family:var(--font-display);font-size:0.95rem;color:var(--ink);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+      <span id="detail-meta" style="font-size:0.75rem;color:var(--ink3)"></span>
+    </div>
+  </div>
+  <div style="padding:1.5rem;max-width:720px;margin:0 auto;width:100%">
+    <div id="detail-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.8rem;margin-bottom:1.5rem"></div>
+    <div id="detail-body"></div>
+  </div>
+</div>
+
+<!-- ADD/EDIT QUESTION MODAL -->
+<div id="modal-question" class="modal-overlay hidden">
+  <div class="modal">
+    <h2 id="modal-q-title">Νέα Ερώτηση</h2>
+    <div class="form-group">
+      <label>Τύπος</label>
+      <div class="radio-group">
+        <label><input type="radio" name="q-type" value="true_false" checked onchange="toggleQType()"> Σωστό/Λάθος</label>
+        <label><input type="radio" name="q-type" value="multiple_choice" onchange="toggleQType()"> Multiple Choice</label>
+      </div>
+    </div>
+    <div class="form-group"><label>Κείμενο</label><textarea id="q-text-input" placeholder="π.χ. Η παράγωγος του $x^2$ είναι $2x$."></textarea></div>
+    <div class="form-group"><label>URL Εικόνας (προαιρετικό)</label><input type="text" id="q-image-url-input" placeholder="https://..."></div>
+    <div id="tf-section">
+      <div class="form-group">
+        <label>Απάντηση</label>
+        <div class="radio-group">
+          <label><input type="radio" name="q-answer" value="true"> Σωστό</label>
+          <label><input type="radio" name="q-answer" value="false"> Λάθος</label>
+        </div>
+      </div>
+    </div>
+    <div id="mc-section" class="hidden">
+      <div class="form-group"><label>Επιλογή Α</label><input type="text" id="q-c0" placeholder="Επιλογή Α"></div>
+      <div class="form-group"><label>Επιλογή Β</label><input type="text" id="q-c1" placeholder="Επιλογή Β"></div>
+      <div class="form-group"><label>Επιλογή Γ</label><input type="text" id="q-c2" placeholder="Επιλογή Γ"></div>
+      <div class="form-group"><label>Επιλογή Δ</label><input type="text" id="q-c3" placeholder="Επιλογή Δ"></div>
+      <div class="form-group">
+        <label>Σωστή Επιλογή</label>
+        <div class="radio-group">
+          <label><input type="radio" name="q-cc" value="0"> Α</label>
+          <label><input type="radio" name="q-cc" value="1"> Β</label>
+          <label><input type="radio" name="q-cc" value="2"> Γ</label>
+          <label><input type="radio" name="q-cc" value="3"> Δ</label>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Ομάδα</label><input type="text" id="q-group-input" placeholder="π.χ. Όρια"></div>
+      <div class="form-group"><label>Σελίδα</label><input type="text" id="q-page-input" placeholder="σελ. 45"></div>
+    </div>
+    <div class="form-group"><label>Timer (δευτερόλεπτα, 0=χωρίς)</label><input type="number" id="q-timer-input" value="0" min="0" max="300" style="width:120px"></div>
+    <div class="form-group"><label>Εξήγηση απάντησης (προαιρετικό)</label><textarea id="q-explanation-input" placeholder="π.χ. Ισχύει γιατί..."></textarea></div>
+    <input type="hidden" id="q-edit-id" value="">
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-question')">Ακύρωση</button>
+      <button class="btn-save" onclick="saveQuestion()">Αποθήκευση</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD IMAGE MODAL -->
+<div id="modal-image" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>Προσθήκη Εικόνας</h2>
+    <div class="form-group"><label>URL Εικόνας</label><input type="text" id="img-url-input" placeholder="https://..."></div>
+    <div class="form-group"><label>Κεφάλαιο</label><input type="text" id="img-chapter-input" placeholder="π.χ. Κεφάλαιο 1"></div>
+    <div class="form-group"><label>Λεζάντα (προαιρετικό)</label><input type="text" id="img-caption-input" placeholder="π.χ. Θεώρημα Pythagoras"></div>
+    <input type="hidden" id="img-edit-id" value="">
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-image')">Ακύρωση</button>
+      <button class="btn-save" onclick="saveImage()">Αποθήκευση</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE OVERLAY -->
+<div id="img-overlay" class="img-overlay hidden" onclick="closeImgOverlay()">
+  <img id="img-overlay-src" src="" alt="">
+  <span class="img-overlay-caption" id="img-overlay-caption"></span>
+</div>
+
+<script>
+const SUPA_URL = 'https://skwatoiyzvymzhteigfg.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNrd2F0b2l5enZ5bXpodGVpZ2ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMDY2MTksImV4cCI6MjA5NjY4MjYxOX0.Q5dE7MoqsvFHmnO9LJUujlzW3-0zTfNBUOUYGyuxTLU';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+let subjects = [];
+let currentStudent = '';
+let currentSubject = null;
+let currentSession = {qs:[], answers:[], cur:0, groupIndex:0, totalGroups:1};
+let adminSubjectId = null;
+let adminQuestions = [];
+let currentAdminTab = 'tab-a-questions';
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function show(id){
+  ['screen-loading','screen-login','screen-subject-select','screen-home','screen-quiz','screen-results','screen-admin','screen-detail','screen-history']
+    .forEach(s=>document.getElementById(s).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+function openModal(id){document.getElementById(id).classList.remove('hidden')}
+function closeModal(id){document.getElementById(id).classList.add('hidden')}
+function renderMath(el){
+  if(typeof renderMathInElement!=='undefined'){
+    renderMathInElement(el,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});
+  } else { setTimeout(()=>renderMath(el),200); }
+}
+
+// ── INIT ──
+window.onload = async () => {
+  try {
+    const {data,error} = await sb.from('subjects').select('*').order('id');
+    if(error) throw error;
+    subjects = data;
+    const role = sessionStorage.getItem('mq_role');
+    if(role==='student'){
+      currentStudent = sessionStorage.getItem('mq_name');
+      const sid = parseInt(sessionStorage.getItem('mq_subject'));
+      currentSubject = subjects.find(s=>s.id===sid);
+      if(currentStudent&&currentSubject){ await showHome(); return; }
+    } else if(role==='student_select'){
+      currentStudent = sessionStorage.getItem('mq_name');
+      showSubjectSelect(); return;
+    } else if(role==='admin'){
+      await showAdminPanel(); return;
+    }
+    show('screen-login');
+  } catch(e) {
+    document.getElementById('loading-text').textContent='ΣΦΑΛΜΑ ΣΥΝΔΕΣΗΣ';
+    const err=document.getElementById('loading-error');
+    err.textContent='Δεν ήταν δυνατή η σύνδεση. Ανανεώστε τη σελίδα.';
+    err.classList.remove('hidden');
+  }
+};
+
+// ── LOGIN ──
+async function doLogin(){
+  const name=document.getElementById('login-name').value.trim();
+  const pass=document.getElementById('login-pass').value.trim();
+  const err=document.getElementById('login-error');
+  if(!name){err.textContent='Εισάγετε το όνομά σας.';return}
+  if(!pass){err.textContent='Εισάγετε κωδικό.';return}
+  const matched=subjects.filter(s=>s.student_pass===pass);
+  if(!matched.length){err.textContent='Λανθασμένος κωδικός.';return}
+  err.textContent='';
+  currentStudent=name;
+  sessionStorage.setItem('mq_name',name);
+  if(matched.length===1){
+    currentSubject=matched[0];
+    sessionStorage.setItem('mq_role','student');
+    sessionStorage.setItem('mq_subject',matched[0].id);
+    await showHome();
+  } else {
+    sessionStorage.setItem('mq_role','student_select');
+    showSubjectSelect();
+  }
+}
+document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+document.getElementById('login-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('login-pass').focus()});
+
+function showAdminLogin(){openModal('modal-admin-login');setTimeout(()=>document.getElementById('admin-username').focus(),50)}
+async function doAdminLogin(){
+  const u=document.getElementById('admin-username').value.trim();
+  const p=document.getElementById('admin-password').value.trim();
+  const err=document.getElementById('admin-login-error');
+  const {data,error}=await sb.from('admins').select('*').eq('username',u).eq('password',p).single();
+  if(error||!data){err.textContent='Λανθασμένα στοιχεία.';return}
+  sessionStorage.setItem('mq_role','admin');
+  closeModal('modal-admin-login');
+  await showAdminPanel();
+}
+document.getElementById('admin-password').addEventListener('keydown',e=>{if(e.key==='Enter')doAdminLogin()});
+
+function doLogout(){
+  sessionStorage.clear();
+  currentStudent='';currentSubject=null;
+  document.getElementById('login-name').value='';
+  document.getElementById('login-pass').value='';
+  show('screen-login');
+}
+
+// ── SUBJECT SELECT ──
+function showSubjectSelect(){
+  document.getElementById('select-name').textContent=currentStudent;
+  const grid=document.getElementById('subject-grid');
+  grid.innerHTML=subjects.map(s=>`
+    <div class="subject-card ${s.type==='quiz'?'quiz-type':'theory-type'}" onclick="selectSubject(${s.id})">
+      <div class="s-icon">${s.type==='quiz'?'📝':'📚'}</div>
+      <div class="s-name">${esc(s.name)}</div>
+      <div class="s-type">${s.type==='quiz'?'Quiz · Σ/Λ':'Θεωρία'}</div>
+    </div>`).join('');
+  show('screen-subject-select');
+}
+async function selectSubject(id){
+  currentSubject=subjects.find(s=>s.id===id);
+  sessionStorage.setItem('mq_role','student');
+  sessionStorage.setItem('mq_subject',id);
+  await showHome();
+}
+
+// ── HOME ──
+async function showHome(){
+  show('screen-home');
+  document.getElementById('home-greeting').textContent='Καλώς ήρθες, '+currentStudent+'!';
+  document.getElementById('home-subject-name').textContent=currentSubject.name;
+  if(currentSubject.type==='quiz'){
+    document.getElementById('home-type-badge').textContent='ΚΟΥΙΖ · ΣΩΣΤΟ / ΛΑΘΟΣ';
+    document.getElementById('home-quiz-content').classList.remove('hidden');
+    document.getElementById('home-theory-content').classList.add('hidden');
+    const {count}=await sb.from('questions').select('*',{count:'exact',head:true}).eq('subject_id',currentSubject.id);
+    const {count:myCount}=await sb.from('results').select('*',{count:'exact',head:true}).eq('subject_id',currentSubject.id).eq('student_name',currentStudent);
+    const total=count||0; const sessions=myCount||0;
+    const tg=Math.ceil(total/10)||1; const gi=sessions%tg;
+    document.getElementById('home-total').textContent=total;
+    document.getElementById('home-group').textContent=(gi+1)+'/'+tg;
+    document.getElementById('home-sessions').textContent=sessions;
+  } else {
+    document.getElementById('home-type-badge').textContent='ΘΕΩΡΙΑ';
+    document.getElementById('home-quiz-content').classList.add('hidden');
+    document.getElementById('home-theory-content').classList.remove('hidden');
+    await loadTheory();
+  }
+}
+async function loadTheory(){
+  const {data}=await sb.from('theory_images').select('*').eq('subject_id',currentSubject.id).order('sort_order');
+  const container=document.getElementById('theory-container');
+  if(!data||!data.length){container.innerHTML='<div class="empty-state"><div class="big">📚</div><p>Δεν υπάρχει θεωρία ακόμα.</p></div>';return}
+  const byChapter={};
+  data.forEach(img=>{const ch=img.chapter||'Γενικά';if(!byChapter[ch])byChapter[ch]=[];byChapter[ch].push(img)});
+  container.innerHTML=Object.entries(byChapter).map(([ch,imgs])=>`
+    <div class="theory-chapter">
+      <div class="theory-chapter-header" onclick="toggleChapter(this)"><span>${esc(ch)}</span><span>▼</span></div>
+      <div class="theory-images">${imgs.map(img=>`
+        <div>
+          <img class="theory-img" src="${esc(img.url)}" alt="${esc(img.caption)}" onclick="openImgOverlay('${esc(img.url)}','${esc(img.caption)}')">
+          ${img.caption?`<p class="theory-caption">${esc(img.caption)}</p>`:''}
+        </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+function toggleChapter(el){const imgs=el.nextElementSibling;imgs.style.display=imgs.style.display==='none'?'grid':'none';el.querySelector('span:last-child').textContent=imgs.style.display==='none'?'▶':'▼'}
+
+async function showMyHistory(){
+  const {data:groups}=await sb.from('results').select('*').eq('subject_id',currentSubject.id).eq('student_name',currentStudent).order('created_at');
+  show('screen-history');
+  window.scrollTo(0,0);
+  document.getElementById('history-title').textContent=currentStudent+' · '+currentSubject.name;
+  if(!groups||!groups.length){
+    document.getElementById('history-stats').innerHTML='';
+    document.getElementById('history-body').innerHTML='<div class="empty-state"><div class="big">📊</div><p>Δεν υπάρχουν προσπάθειες ακόμα.</p></div>';
+    return;
+  }
+  const tc=groups.reduce((s,r)=>s+r.correct,0);
+  const tq=groups.reduce((s,r)=>s+r.total,0);
+  const pct=Math.round(tc/tq*100);
+  const cls=pct>=70?'high':pct>=50?'mid':'low';
+  const clrMap={high:'var(--accent)',mid:'var(--gold)',low:'var(--red)'};
+  document.getElementById('history-stats').innerHTML=`
+    <div class="res-stat correct"><span class="val">${tc}</span><span class="lbl">Σωστές</span></div>
+    <div class="res-stat wrong"><span class="val">${tq-tc}</span><span class="lbl">Λάθος</span></div>
+    <div class="res-stat pct"><span class="val" style="color:${clrMap[cls]}">${pct}%</span><span class="lbl">Συνολικό</span></div>`;
+  document.getElementById('history-body').innerHTML=groups.map((g,gi)=>{
+    const gpct=Math.round(g.correct/g.total*100);
+    const gcls=gpct>=70?'high':gpct>=50?'mid':'low';
+    const rows=(g.details||[]).map((d,i)=>{
+      const ok=d.user_answer===d.correct_answer;
+      return `<div class="review-item ${ok?'correct':'wrong'}">
+        <span class="review-num">${i+1}</span>
+        <div class="review-text">${esc(d.text)}<div class="your-answer ${ok?'correct':'wrong'}">Απάντησες: <strong>${d.user_answer?'Σωστό':'Λάθος'}</strong>${!ok?` · Σωστό: <strong>${d.correct_answer?'Σωστό':'Λάθος'}</strong>`:''}</div></div>
+        <div class="review-meta"><span class="review-result">${ok?'✓':'✗'}</span>${d.page?`<span class="review-page">📄 ${esc(d.page)}</span>`:''}</div>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:1.5rem">
+      <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:0.8rem;padding:0.7rem 1rem;background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg)">
+        <span style="font-family:var(--font-display);font-size:0.88rem">${g.group_label||'Ομάδα '+(gi+1)}</span>
+        <span class="score-pill ${gcls}">${g.correct}/${g.total} (${gpct}%)</span>
+        <span style="font-size:0.72rem;color:var(--ink3);margin-left:auto">${new Date(g.created_at).toLocaleDateString('el-GR')}</span>
+      </div>
+      ${rows||'<p style="color:var(--ink3);font-size:0.82rem">Δεν υπάρχουν λεπτομέρειες.</p>'}
+    </div>`;
+  }).join('');
+  renderMath(document.getElementById('history-body'));
+}
+function openImgOverlay(url,cap){document.getElementById('img-overlay-src').src=url;document.getElementById('img-overlay-caption').textContent=cap||'';document.getElementById('img-overlay').classList.remove('hidden')}
+function closeImgOverlay(){document.getElementById('img-overlay').classList.add('hidden')}
+
+// ── QUIZ ──
+function shuffle(arr){const a=[...arr];const r=new Uint32Array(a.length);crypto.getRandomValues(r);for(let i=a.length-1;i>0;i--){const j=r[i]%(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+async function startQuiz(){
+  let query=sb.from('questions').select('*').eq('subject_id',currentSubject.id);
+  if(currentSubject.active_group) query=query.eq('group_name',currentSubject.active_group);
+  const {data:allQs}=await query;
+  if(!allQs||!allQs.length){alert('Δεν υπάρχουν ερωτήσεις ακόμα.');return}
+  const {count:sessions}=await sb.from('results').select('*',{count:'exact',head:true}).eq('subject_id',currentSubject.id).eq('student_name',currentStudent);
+  const s=sessions||0;
+  const groupSize=10; const tg=Math.ceil(allQs.length/groupSize);
+  const gi=s%tg; const start=gi*groupSize;
+  const pool=shuffle(allQs.slice(start,Math.min(start+groupSize,allQs.length)));
+  currentSession={qs:pool,answers:new Array(pool.length).fill(null),cur:0,groupIndex:gi,totalGroups:tg};
+  clearTimer();
+  renderQuizQ(); show('screen-quiz');
+}
+let timerInterval=null;
+function clearTimer(){if(timerInterval){clearInterval(timerInterval);timerInterval=null;}}
+function startTimer(seconds){
+  clearTimer();
+  if(!seconds||seconds<=0){document.getElementById('quiz-timer-bar').classList.add('hidden');return}
+  document.getElementById('quiz-timer-bar').classList.remove('hidden');
+  let remaining=seconds;
+  const fill=document.getElementById('quiz-timer-fill');
+  const display=document.getElementById('quiz-timer-display');
+  fill.style.width='100%';fill.style.background='var(--accent)';
+  display.textContent=remaining+'″';display.style.color='var(--red)';
+  timerInterval=setInterval(()=>{
+    remaining--;
+    fill.style.width=(remaining/seconds*100)+'%';
+    display.textContent=remaining+'″';
+    if(remaining<=5) fill.style.background='var(--red)';
+    if(remaining<=0){clearTimer();nextQ();}
+  },1000);
+}
+function renderQuizQ(){
+  const {qs,answers,cur}=currentSession;
+  const q=qs[cur];
+  clearTimer();
+  document.getElementById('quiz-explanation-box').classList.add('hidden');
+  document.getElementById('qprog-cur').textContent=cur+1;
+  document.getElementById('qprog-tot').textContent=qs.length;
+  document.getElementById('quiz-prog-fill').style.width=((cur+1)/qs.length*100)+'%';
+  document.getElementById('quiz-q-num').textContent=(cur+1)+'.';
+  document.getElementById('quiz-q-text').textContent=q.text;
+  renderMath(document.getElementById('quiz-q-text'));
+  const imgDiv=document.getElementById('quiz-q-img');
+  const imgSrc=document.getElementById('quiz-q-img-src');
+  if(q.image_url){imgSrc.src=q.image_url;imgDiv.classList.remove('hidden');}
+  else{imgDiv.classList.add('hidden');imgSrc.src='';}
+  const isMC=q.question_type==='multiple_choice';
+  document.getElementById('quiz-tf-btns').classList.toggle('hidden',isMC);
+  document.getElementById('quiz-mc-btns').classList.toggle('hidden',!isMC);
+  if(isMC){
+    const choices=q.choices||[];
+    const labels=['Α','Β','Γ','Δ'];
+    const ans=answers[cur];
+    document.getElementById('quiz-mc-btns').innerHTML=choices.map((ch,i)=>`
+      <button class="ans-btn${ans===i?' selected':''}" onclick="selectAnswer(${i})">
+        <span class="bl">${labels[i]}</span>${esc(ch)}
+      </button>`).join('');
+  } else {
+    const ans=answers[cur];
+    document.getElementById('btn-true').className='ans-btn'+(ans===true?' selected':'');
+    document.getElementById('btn-false').className='ans-btn'+(ans===false?' selected':'');
+  }
+  document.getElementById('btn-prev').style.display=cur>0?'':'none';
+  const btn=document.getElementById('btn-next');
+  btn.textContent=cur===qs.length-1?'Υποβολή ✓':'Επόμενο →';
+  btn.disabled=answers[cur]===null;
+  renderDots();
+  startTimer(q.timer_seconds||0);
+}
+function renderDots(){
+  const {qs,answers,cur}=currentSession;
+  document.getElementById('dot-row').innerHTML=qs.map((_,i)=>`<div class="dot${answers[i]!==null?' answered':''}${i===cur?' current':''}"></div>`).join('');
+}
+function selectAnswer(val){
+  clearTimer();
+  currentSession.answers[currentSession.cur]=val;
+  const q=currentSession.qs[currentSession.cur];
+  const isMC=q.question_type==='multiple_choice';
+  // Εμφάνιση εξήγησης
+  if(q.explanation){
+    document.getElementById('quiz-explanation-text').textContent=q.explanation;
+    document.getElementById('quiz-explanation-box').classList.remove('hidden');
+  }
+  if(isMC){
+    const labels=['Α','Β','Γ','Δ'];
+    const choices=q.choices||[];
+    document.getElementById('quiz-mc-btns').innerHTML=choices.map((ch,i)=>`
+      <button class="ans-btn${i===val?' selected':''}" onclick="selectAnswer(${i})" disabled>
+        <span class="bl">${labels[i]}</span>${esc(ch)}
+      </button>`).join('');
+  } else {
+    document.getElementById('btn-true').className='ans-btn'+(val===true?' selected':'');
+    document.getElementById('btn-false').className='ans-btn'+(val===false?' selected':'');
+  }
+  document.getElementById('btn-next').disabled=false;
+  renderDots();
+}
+function nextQ(){if(currentSession.answers[currentSession.cur]===null)return;clearTimer();if(currentSession.cur===currentSession.qs.length-1){showResults();return}currentSession.cur++;renderQuizQ()}
+function prevQ(){if(currentSession.cur>0){clearTimer();currentSession.cur--;renderQuizQ()}}
+function confirmExit(){if(confirm('Έξοδος από το quiz;')){clearTimer();showHome()}}
+
+// ── RESULTS ──
+async function showResults(){
+  clearTimer();
+  const {qs,answers,groupIndex,totalGroups}=currentSession;
+  let correct=0;
+  const reviewHTML=qs.map((q,i)=>{
+    const isMC=q.question_type==='multiple_choice';
+    let ok,userLabel,correctLabel;
+    if(isMC){
+      ok=answers[i]===q.correct_choice;
+      const labels=['Α','Β','Γ','Δ'];
+      const choices=q.choices||[];
+      userLabel=answers[i]!=null?labels[answers[i]]+'. '+esc(choices[answers[i]]):'—';
+      correctLabel=labels[q.correct_choice]+'. '+esc(choices[q.correct_choice]);
+    } else {
+      ok=answers[i]===q.answer;
+      userLabel=answers[i]?'Σωστό':'Λάθος';
+      correctLabel=q.answer?'Σωστό':'Λάθος';
+    }
+    if(ok) correct++;
+    return `<div class="review-item ${ok?'correct':'wrong'}">
+      <span class="review-num">${i+1}</span>
+      <div class="review-text">${esc(q.text)}
+        <div class="your-answer ${ok?'correct':'wrong'}">Απάντησες: <strong>${userLabel}</strong>${!ok?` · Σωστό: <strong>${correctLabel}</strong>`:''}</div>
+        ${q.explanation?`<div style="font-size:0.75rem;color:var(--gold);margin-top:3px">💡 ${esc(q.explanation)}</div>`:''}
+      </div>
+      <div class="review-meta"><span class="review-result">${ok?'✓':'✗'}</span>${q.page?`<span class="review-page">📄 ${esc(q.page)}</span>`:''}</div>
+    </div>`;
+  }).join('');
+  const details=qs.map((q,i)=>({
+    text:q.text,
+    question_type:q.question_type||'true_false',
+    correct_answer:q.question_type==='multiple_choice'?q.correct_choice:q.answer,
+    user_answer:answers[i],
+    choices:q.choices||null,
+    explanation:q.explanation||'',
+    page:q.page||''
+  }));
+  const isLast=(groupIndex+1)>=totalGroups;
+  await sb.from('results').insert({subject_id:currentSubject.id,student_name:currentStudent,correct,total:qs.length,group_index:groupIndex,group_label:'Ομάδα '+(groupIndex+1)+'/'+totalGroups,details});
+  document.getElementById('results-name-display').textContent=currentStudent+' · Ομάδα '+(groupIndex+1)+'/'+totalGroups;
+  document.getElementById('res-correct').textContent=correct;
+  document.getElementById('res-tot').textContent='/'+qs.length;
+  document.getElementById('res-c').textContent=correct;
+  document.getElementById('res-w').textContent=qs.length-correct;
+  document.getElementById('res-pct').textContent=Math.round(correct/qs.length*100)+'%';
+  let finalHTML=reviewHTML;
+  if(isLast){
+    const {data:allRes}=await sb.from('results').select('correct,total').eq('subject_id',currentSubject.id).eq('student_name',currentStudent);
+    const tc=allRes.reduce((s,r)=>s+r.correct,0),tq=allRes.reduce((s,r)=>s+r.total,0);
+    finalHTML=`<div style="background:var(--accent-light);border:1px solid #86efac;border-radius:var(--radius-lg);padding:1.5rem;text-align:center;margin-bottom:1rem">
+      <div style="font-size:2rem;margin-bottom:0.5rem">🎉</div>
+      <p style="font-family:var(--font-display);font-size:1rem;color:var(--accent);margin-bottom:0.3rem">Ολοκλήρωσες όλες τις ερωτήσεις!</p>
+      <p style="font-size:0.82rem;color:var(--ink3)">Συνολικό σκορ: <strong>${tc}/${tq}</strong> (${Math.round(tc/tq*100)}%)</p>
+    </div>`+reviewHTML;
+  }
+  document.getElementById('review-list').innerHTML=finalHTML;
+  renderMath(document.getElementById('review-list'));
+  document.getElementById('results-actions-div').innerHTML=`
+    <button class="btn-home" onclick="showHome()">← Αρχική</button>
+    ${!isLast?`<button class="btn-retry" onclick="startQuiz()">Επόμενο Quiz →</button>`:''}
+  `;
+  show('screen-results');
+}
+
+// ── ADMIN PANEL ──
+async function showAdminPanel(){
+  const sel=document.getElementById('admin-subject-select');
+  sel.innerHTML=subjects.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  adminSubjectId=subjects[0]?.id;
+  await loadAdminData();
+  show('screen-admin');
+}
+async function onAdminSubjectChange(){
+  adminSubjectId=parseInt(document.getElementById('admin-subject-select').value);
+  await loadAdminData();
+}
+async function loadAdminData(){
+  const subj=subjects.find(s=>s.id===adminSubjectId);
+  if(subj)document.getElementById('a-student-pass').value=subj.student_pass;
+  if(currentAdminTab==='tab-a-questions') await loadAdminQuestions();
+  else if(currentAdminTab==='tab-a-results') await renderAdminResults();
+  else if(currentAdminTab==='tab-a-theory') await loadAdminTheory();
+}
+async function loadAdminQuestions(){
+  const {data}=await sb.from('questions').select('*').eq('subject_id',adminSubjectId).order('created_at');
+  adminQuestions=data||[];
+  renderAdminQList();
+}
+function renderAdminQList(){
+  const el=document.getElementById('a-q-list');
+  document.getElementById('a-q-count').textContent='('+adminQuestions.length+')';
+  document.getElementById('select-all-cb').checked=false;
+  if(!adminQuestions.length){el.innerHTML='<div class="empty-state"><div class="big">📝</div><p>Δεν υπάρχουν ερωτήσεις.</p></div>';return}
+  el.innerHTML=adminQuestions.map((q,i)=>`
+    <div class="item-card" id="qcard-${q.id}">
+      <input type="checkbox" class="q-cb" data-id="${q.id}" style="flex-shrink:0;width:16px;height:16px;cursor:pointer">
+      ${q.image_url?`<img src="${esc(q.image_url)}" style="width:50px;height:40px;object-fit:cover;border-radius:4px;flex-shrink:0;cursor:pointer;border:1px solid var(--border)" onclick="openImgOverlay('${esc(q.image_url)}','')">`:``}
+      <span class="item-num">${i+1}</span>
+      <div class="item-content">
+        <p class="item-title">${esc(q.text)}</p>
+        <div class="item-meta">
+          ${q.question_type==='multiple_choice'?'<span class="badge badge-blue">MC</span>':'<span class="badge '+(q.answer?'badge-green':'badge-red')+'">'+(q.answer?'✓ Σωστό':'✗ Λάθος')+'</span>'}
+          ${q.group_name?`<span class="badge" style="background:#e0e7ff;color:#3730a3">📁 ${esc(q.group_name)}</span>`:''}
+          ${q.timer_seconds?`<span>⏱ ${q.timer_seconds}″</span>`:''}
+          ${q.page?`<span>📄 ${esc(q.page)}</span>`:''}
+        </div>
+      </div>
+      <div class="item-actions">
+        <button class="btn-icon edit" onclick="openEditModal(${q.id})">✏</button>
+        <button class="btn-icon del" onclick="deleteQuestion(${q.id})">🗑</button>
+      </div>
+    </div>`).join('');
+  renderMath(el);
+  // Ενημέρωση dropdown ομάδων
+  const groups=[...new Set(adminQuestions.map(q=>q.group_name).filter(Boolean))];
+  const sel=document.getElementById('a-active-group-select');
+  if(sel){
+    sel.innerHTML='<option value="">— Όλες —</option>'+groups.map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('');
+    const subj=subjects.find(s=>s.id===adminSubjectId);
+    if(subj&&subj.active_group) sel.value=subj.active_group;
+  }
+}
+function toggleQType(){
+  const isMC=document.querySelector('input[name="q-type"]:checked').value==='multiple_choice';
+  document.getElementById('tf-section').classList.toggle('hidden',isMC);
+  document.getElementById('mc-section').classList.toggle('hidden',!isMC);
+}
+function openAddModal(){
+  document.getElementById('modal-q-title').textContent='Νέα Ερώτηση';
+  document.getElementById('q-text-input').value='';
+  document.getElementById('q-page-input').value='';
+  document.getElementById('q-image-url-input').value='';
+  document.getElementById('q-group-input').value='';
+  document.getElementById('q-timer-input').value='0';
+  document.getElementById('q-explanation-input').value='';
+  document.querySelectorAll('input[name="q-answer"]').forEach(r=>r.checked=false);
+  document.querySelectorAll('input[name="q-type"]')[0].checked=true;
+  document.querySelectorAll('input[name="q-cc"]').forEach(r=>r.checked=false);
+  ['q-c0','q-c1','q-c2','q-c3'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('q-edit-id').value='';
+  document.getElementById('tf-section').classList.remove('hidden');
+  document.getElementById('mc-section').classList.add('hidden');
+  openModal('modal-question');
+  setTimeout(()=>document.getElementById('q-text-input').focus(),50);
+}
+function openEditModal(id){
+  const q=adminQuestions.find(q=>q.id===id);if(!q)return;
+  document.getElementById('modal-q-title').textContent='Επεξεργασία';
+  document.getElementById('q-text-input').value=q.text;
+  document.getElementById('q-page-input').value=q.page||'';
+  document.getElementById('q-image-url-input').value=q.image_url||'';
+  document.getElementById('q-group-input').value=q.group_name||'';
+  document.getElementById('q-timer-input').value=q.timer_seconds||0;
+  document.getElementById('q-explanation-input').value=q.explanation||'';
+  const isMC=q.question_type==='multiple_choice';
+  document.querySelectorAll('input[name="q-type"]').forEach(r=>r.checked=(r.value===(isMC?'multiple_choice':'true_false')));
+  if(isMC){
+    const ch=q.choices||[];
+    ['q-c0','q-c1','q-c2','q-c3'].forEach((id,i)=>document.getElementById(id).value=ch[i]||'');
+    document.querySelectorAll('input[name="q-cc"]').forEach(r=>r.checked=(parseInt(r.value)===q.correct_choice));
+    document.getElementById('tf-section').classList.add('hidden');
+    document.getElementById('mc-section').classList.remove('hidden');
+  } else {
+    document.querySelectorAll('input[name="q-answer"]').forEach(r=>r.checked=(r.value===(q.answer?'true':'false')));
+    document.getElementById('tf-section').classList.remove('hidden');
+    document.getElementById('mc-section').classList.add('hidden');
+  }
+  document.getElementById('q-edit-id').value=id;
+  openModal('modal-question');
+}
+async function saveQuestion(){
+  const text=document.getElementById('q-text-input').value.trim();
+  const page=document.getElementById('q-page-input').value.trim();
+  const image_url=document.getElementById('q-image-url-input').value.trim();
+  const group_name=document.getElementById('q-group-input').value.trim()||'Γενικές';
+  const timer_seconds=parseInt(document.getElementById('q-timer-input').value)||0;
+  const explanation=document.getElementById('q-explanation-input').value.trim();
+  const qType=document.querySelector('input[name="q-type"]:checked').value;
+  if(!text){alert('Εισάγετε κείμενο.');return}
+  const editId=document.getElementById('q-edit-id').value;
+  let qData={subject_id:adminSubjectId,text,page,image_url,group_name,timer_seconds,explanation,question_type:qType};
+  if(qType==='multiple_choice'){
+    const ccEl=document.querySelector('input[name="q-cc"]:checked');
+    if(!ccEl){alert('Επιλέξτε σωστή επιλογή.');return}
+    qData.choices=[document.getElementById('q-c0').value,document.getElementById('q-c1').value,document.getElementById('q-c2').value,document.getElementById('q-c3').value];
+    qData.correct_choice=parseInt(ccEl.value);
+    qData.answer=null;
+  } else {
+    const ansEl=document.querySelector('input[name="q-answer"]:checked');
+    if(!ansEl){alert('Επιλέξτε απάντηση.');return}
+    qData.answer=ansEl.value==='true';
+    qData.choices=null;qData.correct_choice=null;
+  }
+  if(editId==='') await sb.from('questions').insert(qData);
+  else await sb.from('questions').update(qData).eq('id',parseInt(editId));
+  closeModal('modal-question');
+  await loadAdminQuestions();
+}
+async function deleteQuestion(id){if(!confirm('Διαγραφή;'))return;await sb.from('questions').delete().eq('id',id);await loadAdminQuestions()}
+async function deleteAllQuestions(){if(!confirm('Διαγραφή ΟΛΩΝ;'))return;await sb.from('questions').delete().eq('subject_id',adminSubjectId);await loadAdminQuestions()}
+async function exportQuestions(){
+  const blob=new Blob([JSON.stringify({questions:adminQuestions.map(q=>({text:q.text,answer:q.answer,page:q.page||''})),version:1},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='questions.json';a.click();
+}
+async function importQuestions(e){
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=async ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      if(data.questions&&Array.isArray(data.questions)){
+        if(confirm('Εισαγωγή '+data.questions.length+' ερωτήσεων;')){
+          const rows=data.questions.map(q=>({subject_id:adminSubjectId,text:q.text,answer:q.answer,page:q.page||'',image_url:q.image_url||''}));
+          await sb.from('questions').insert(rows);
+          await loadAdminQuestions();
+          alert('✓ Προστέθηκαν '+data.questions.length+' ερωτήσεις!');
+        }
+      }
+    }catch{alert('Σφάλμα αρχείου.');}
+  };
+  r.readAsText(file);e.target.value='';
+}
+
+// Admin Results
+async function renderAdminStats(){
+  const {data:results}=await sb.from('results').select('details').eq('subject_id',adminSubjectId);
+  const el=document.getElementById('a-stats-list');
+  if(!results||!results.length){el.innerHTML='<div class="empty-state"><div class="big">📊</div><p>Δεν υπάρχουν αποτελέσματα ακόμα.</p></div>';return}
+  // Συγκέντρωση στατιστικών ανά κείμενο ερώτησης
+  const stats={};
+  results.forEach(r=>{
+    (r.details||[]).forEach(d=>{
+      if(!stats[d.text]) stats[d.text]={correct:0,total:0,text:d.text};
+      stats[d.text].total++;
+      const ok=d.question_type==='multiple_choice'?d.user_answer===d.correct_answer:d.user_answer===d.correct_answer;
+      if(ok) stats[d.text].correct++;
+    });
+  });
+  const sorted=Object.values(stats).sort((a,b)=>(a.correct/a.total)-(b.correct/b.total));
+  el.innerHTML=sorted.map((s,i)=>{
+    const pct=Math.round(s.correct/s.total*100);
+    const cls=pct>=70?'high':pct>=50?'mid':'low';
+    return `<div class="item-card" style="margin-bottom:0.6rem">
+      <span class="item-num">${i+1}</span>
+      <div class="item-content">
+        <p class="item-title" style="font-size:0.82rem">${esc(s.text)}</p>
+        <div class="item-meta">
+          <span class="score-pill ${cls}">${s.correct}/${s.total} (${pct}%)</span>
+          <span style="font-size:0.75rem;color:var(--ink3)">${s.total} απαντήσεις</span>
+        </div>
+        <div style="height:4px;background:var(--paper3);border-radius:2px;margin-top:6px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${pct>=70?'var(--accent)':pct>=50?'var(--gold)':'var(--red)'};border-radius:2px"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  renderMath(el);
+}
+
+async function renderAdminResults(){
+  const filter=(document.getElementById('a-filter-name').value||'').toLowerCase();
+  const {data}=await sb.from('results').select('*').eq('subject_id',adminSubjectId).order('created_at');
+  const el=document.getElementById('a-results-cards');
+  if(!data||!data.length){el.innerHTML='<div class="empty-state"><div class="big">📊</div><p>Δεν υπάρχουν αποτελέσματα.</p></div>';return}
+  const byStudent={};
+  data.filter(r=>r.student_name.toLowerCase().includes(filter)).forEach(r=>{
+    if(!byStudent[r.student_name])byStudent[r.student_name]=[];
+    byStudent[r.student_name].push(r);
+  });
+  if(!Object.keys(byStudent).length){el.innerHTML='<div class="empty-state"><div class="big">🔍</div><p>Δεν βρέθηκαν αποτελέσματα.</p></div>';return}
+  el.innerHTML=Object.entries(byStudent).map(([name,groups],i)=>{
+    const tc=groups.reduce((s,r)=>s+r.correct,0),tq=groups.reduce((s,r)=>s+r.total,0);
+    const pct=Math.round(tc/tq*100);const cls=pct>=70?'high':pct>=50?'mid':'low';
+    return `<div class="item-card" style="margin-bottom:0.6rem">
+      <span class="item-num">${i+1}</span>
+      <div class="item-content">
+        <p class="item-title" style="font-weight:500">${esc(name)}</p>
+        <div class="item-meta"><span class="score-pill ${cls}">${tc}/${tq} (${pct}%)</span><span>${groups.length} ομάδες</span></div>
+      </div>
+      <button class="btn-sm" onclick="showStudentDetail('${name.replace(/'/g,"\\'")}')">🔍</button>
+    </div>`;
+  }).join('');
+}
+async function clearAllResults(){
+  if(!confirm('Διαγραφή ΟΛΩΝ των αποτελεσμάτων;'))return;
+  await sb.from('results').delete().eq('subject_id',adminSubjectId);
+  await renderAdminResults();
+}
+
+// Admin Theory
+async function loadAdminTheory(){
+  const {data}=await sb.from('theory_images').select('*').eq('subject_id',adminSubjectId).order('sort_order');
+  const el=document.getElementById('a-theory-list');
+  if(!data||!data.length){el.innerHTML='<div class="empty-state"><div class="big">🖼</div><p>Δεν υπάρχουν εικόνες.</p></div>';return}
+  el.innerHTML=data.map((img,i)=>`
+    <div class="item-card">
+      <img src="${esc(img.url)}" style="width:60px;height:45px;object-fit:cover;border-radius:4px;flex-shrink:0;cursor:pointer" onclick="openImgOverlay('${esc(img.url)}','${esc(img.caption)}')">
+      <div class="item-content">
+        <p class="item-title">${esc(img.chapter||'Γενικά')}</p>
+        <div class="item-meta">${img.caption?esc(img.caption):''}</div>
+      </div>
+      <div class="item-actions">
+        <button class="btn-icon del" onclick="deleteImage(${img.id})">🗑</button>
+      </div>
+    </div>`).join('');
+}
+function openAddImageModal(){
+  document.getElementById('img-url-input').value='';
+  document.getElementById('img-chapter-input').value='';
+  document.getElementById('img-caption-input').value='';
+  document.getElementById('img-edit-id').value='';
+  openModal('modal-image');
+}
+async function saveImage(){
+  const url=document.getElementById('img-url-input').value.trim();
+  const chapter=document.getElementById('img-chapter-input').value.trim();
+  const caption=document.getElementById('img-caption-input').value.trim();
+  if(!url){alert('Εισάγετε URL.');return}
+  await sb.from('theory_images').insert({subject_id:adminSubjectId,url,chapter,caption,sort_order:0});
+  closeModal('modal-image');
+  await loadAdminTheory();
+}
+async function deleteImage(id){if(!confirm('Διαγραφή εικόνας;'))return;await sb.from('theory_images').delete().eq('id',id);await loadAdminTheory()}
+
+// Settings
+async function saveActiveGroup(){
+  const ag=document.getElementById('a-active-group-select').value||null;
+  await sb.from('subjects').update({active_group:ag}).eq('id',adminSubjectId);
+  subjects=subjects.map(s=>s.id===adminSubjectId?{...s,active_group:ag}:s);
+  document.getElementById('a-group-msg').textContent=ag?'✓ Ενεργή ομάδα: '+ag:'✓ Εμφανίζονται όλες οι ερωτήσεις';
+  setTimeout(()=>document.getElementById('a-group-msg').textContent='',3000);
+}
+function toggleSelectAll(cb){
+  document.querySelectorAll('.q-cb').forEach(c=>c.checked=cb.checked);
+}
+async function bulkAssignGroup(){
+  const group=document.getElementById('bulk-group-input').value.trim();
+  if(!group){alert('Εισάγετε όνομα ομάδας.');return}
+  const selected=[...document.querySelectorAll('.q-cb:checked')].map(c=>parseInt(c.dataset.id));
+  if(!selected.length){alert('Επιλέξτε ερωτήσεις.');return}
+  await sb.from('questions').update({group_name:group}).in('id',selected);
+  document.getElementById('bulk-msg').textContent='✓ Ανατέθηκε σε '+selected.length+' ερωτήσεις!';
+  setTimeout(()=>document.getElementById('bulk-msg').textContent='',3000);
+  document.getElementById('select-all-cb').checked=false;
+  document.getElementById('bulk-group-input').value='';
+  await loadAdminQuestions();
+}
+async function saveStudentPass(){
+  const pass=document.getElementById('a-student-pass').value.trim();
+  if(!pass)return;
+  await sb.from('subjects').update({student_pass:pass}).eq('id',adminSubjectId);
+  subjects=subjects.map(s=>s.id===adminSubjectId?{...s,student_pass:pass}:s);
+  document.getElementById('a-settings-msg').textContent='✓ Αποθηκεύτηκε!';
+  setTimeout(()=>document.getElementById('a-settings-msg').textContent='',2500);
+}
+async function saveAdminPass(){
+  const pass=document.getElementById('a-admin-pass').value.trim();
+  if(!pass)return;
+  await sb.from('admins').update({password:pass}).eq('username','superadmin');
+  document.getElementById('a-admin-msg').textContent='✓ Αποθηκεύτηκε!';
+  setTimeout(()=>document.getElementById('a-admin-msg').textContent='',2500);
+}
+
+// Tab switching
+function switchAdminTab(tabId,el){
+  currentAdminTab=tabId;
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  el.classList.add('active');
+  if(tabId==='tab-a-questions') loadAdminQuestions();
+  else if(tabId==='tab-a-results') renderAdminResults();
+  else if(tabId==='tab-a-stats') renderAdminStats();
+  else if(tabId==='tab-a-theory') loadAdminTheory();
+  else if(tabId==='tab-a-settings'){
+    const subj=subjects.find(s=>s.id===adminSubjectId);
+    if(subj) document.getElementById('a-student-pass').value=subj.student_pass;
+    // Φόρτωση ομάδων στο dropdown
+    const groups=[...new Set(adminQuestions.map(q=>q.group_name).filter(Boolean))];
+    const sel=document.getElementById('a-active-group-select');
+    sel.innerHTML='<option value="">— Όλες —</option>'+groups.map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('');
+    if(subj&&subj.active_group) sel.value=subj.active_group;
+  }
+}
+
+// Detail
+async function showStudentDetail(studentName){
+  const {data:groups}=await sb.from('results').select('*').eq('subject_id',adminSubjectId).eq('student_name',studentName).order('created_at');
+  if(!groups||!groups.length)return;
+  const tc=groups.reduce((s,r)=>s+r.correct,0),tq=groups.reduce((s,r)=>s+r.total,0);
+  const pct=Math.round(tc/tq*100);const cls=pct>=70?'high':pct>=50?'mid':'low';
+  const clrMap={high:'var(--accent)',mid:'var(--gold)',low:'var(--red)'};
+  document.getElementById('detail-name').textContent=studentName;
+  document.getElementById('detail-meta').textContent=groups.length+' ομάδες';
+  document.getElementById('detail-stats').innerHTML=`
+    <div class="res-stat correct"><span class="val">${tc}</span><span class="lbl">Σωστές</span></div>
+    <div class="res-stat wrong"><span class="val">${tq-tc}</span><span class="lbl">Λάθος</span></div>
+    <div class="res-stat pct"><span class="val" style="color:${clrMap[cls]}">${pct}%</span><span class="lbl">Ποσοστό</span></div>`;
+  document.getElementById('detail-body').innerHTML=groups.map((g,gi)=>{
+    const gpct=Math.round(g.correct/g.total*100);const gcls=gpct>=70?'high':gpct>=50?'mid':'low';
+    const rows=(g.details||[]).map((d,i)=>{
+      const ok=d.user_answer===d.correct_answer;
+      return `<div class="review-item ${ok?'correct':'wrong'}">
+        <span class="review-num">${i+1}</span>
+        <div class="review-text">${esc(d.text)}<div class="your-answer ${ok?'correct':'wrong'}">Απάντησε: <strong>${d.user_answer?'Σωστό':'Λάθος'}</strong>${!ok?` · Σωστό: <strong>${d.correct_answer?'Σωστό':'Λάθος'}</strong>`:''}</div></div>
+        <div class="review-meta"><span class="review-result">${ok?'✓':'✗'}</span>${d.page?`<span class="review-page">📄 ${esc(d.page)}</span>`:''}</div>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:1.5rem">
+      <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:0.8rem;padding:0.7rem 1rem;background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg)">
+        <span style="font-family:var(--font-display);font-size:0.88rem">${g.group_label||'Ομάδα '+(gi+1)}</span>
+        <span class="score-pill ${gcls}">${g.correct}/${g.total} (${gpct}%)</span>
+        <span style="font-size:0.72rem;color:var(--ink3);margin-left:auto">${new Date(g.created_at).toLocaleDateString('el-GR')}</span>
+      </div>
+      ${rows||'<p style="color:var(--ink3);font-size:0.82rem">Δεν υπάρχουν λεπτομέρειες.</p>'}
+    </div>`;
+  }).join('');
+  renderMath(document.getElementById('detail-body'));
+  show('screen-detail');
+  window.scrollTo(0,0);
+}
+
+function showSubjectSelect(){
+  sessionStorage.setItem('mq_role','student_select');
+  showSubjectSelect_inner();
+}
+function showSubjectSelect_inner(){
+  document.getElementById('select-name').textContent=currentStudent;
+  const grid=document.getElementById('subject-grid');
+  grid.innerHTML=subjects.map(s=>`
+    <div class="subject-card ${s.type==='quiz'?'quiz-type':'theory-type'}" onclick="selectSubject(${s.id})">
+      <div class="s-icon">${s.type==='quiz'?'📝':'📚'}</div>
+      <div class="s-name">${esc(s.name)}</div>
+      <div class="s-type">${s.type==='quiz'?'Quiz · Σ/Λ':'Θεωρία'}</div>
+    </div>`).join('');
+  show('screen-subject-select');
+}
+</script>
+</body>
+</html>
